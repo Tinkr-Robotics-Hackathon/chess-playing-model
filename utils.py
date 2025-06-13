@@ -12,9 +12,9 @@ initial_board = [
     ["B_P", "B_P", "B_P", "B_P", "B_P",   "B_P", "B_P", "B_P"],  # Rank 7
     ["E",   "E",   "E",   "E",   "E", "E",   "E",   "E"],    # Rank 6
     ["E",   "E",   "E",   "E",   "E",   "E",   "E",   "E"],    # Rank 5
-    ["E",   "E",   "E",   "E",   "W_P",   "E",   "E",   "E"],    # Rank 4
+    ["E",   "E",   "E",   "E",   "E",   "E",   "E",   "E"],    # Rank 4
     ["E",   "E",   "E",   "E",   "E",   "E",   "E",   "E"],    # Rank 3
-    ["W_P", "W_P", "W_P", "W_P", "E", "W_P", "W_P", "W_P"],  # Rank 2
+    ["W_P", "W_P", "W_P", "W_P", "W_P", "W_P", "W_P", "W_P"],  # Rank 2
     ["W_R", "W_N", "W_B", "W_Q", "W_K", "W_B", "W_N", "W_R"],  # Rank 1
 ]
 
