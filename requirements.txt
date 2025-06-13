@@ -1,0 +1,11 @@
+python-chess
+chess
+transformers
+torch
+pillow
+torchvision
+ultralytics
+opencv-python
+numpy 
+matplotlib
+onnxruntime
