@@ -1,8 +1,0 @@
-B_R E E E E E E E
-E B_P B_P E B_K E E E
-E B_B E E B_P E E E
-B_P W_P E E B_N E W_K E
-E E E E E E E E
-W_P E W_P E E E E W_P
-E E W_P E E E B_R E
-E E E E E W_R E E

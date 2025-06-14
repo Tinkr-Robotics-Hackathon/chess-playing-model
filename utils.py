@@ -41,12 +41,6 @@ def decode_uci_to_json(fen: str, uci_move: str):
     else:
         move_type = "move"
     
-    print({
-        "piece": piece_name,
-        "from": chess.square_name(move.from_square),
-        "to": chess.square_name(move.to_square),
-        "type": move_type
-    })
 
     return {
         "piece": piece_name,
