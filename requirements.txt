@@ -10,3 +10,6 @@ numpy
 matplotlib
 onnxruntime
 seaborn
+streamlit
+cairosvg
+paho-mqtt
