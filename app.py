@@ -280,9 +280,13 @@ else:
         if st.session_state.board.chess_board.is_checkmate():
             st.session_state.game_over = True
             st.error("Checkmate!")
+            # disable play button
+            st.session_state.play_disabled = True
         elif st.session_state.board.chess_board.is_stalemate():
             st.session_state.game_over = True
             st.warning("Stalemate!")
+            # disable play button
+            st.session_state.play_disabled = True
         elif st.session_state.board.chess_board.is_insufficient_material():
             st.session_state.game_over = True
             st.warning("Insufficient Material!")
