@@ -199,7 +199,7 @@ else:
                 warning_message = None
                 with st.spinner("Capturing board, analyzing, and calculating AI move..."):
                     try:
-                        cap = cv2.VideoCapture(cam_url)
+                        cap = cv2.VideoCapture(2)
                         ret, frame = cap.read()
                         cap.release()
                         if not ret or frame is None:

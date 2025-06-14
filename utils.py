@@ -91,6 +91,14 @@ class ChessBoard:
             else:
                 new_board_state[row][col] = "E"
         
+        #  write new and old board state to a .txt file for comparison
+        with open("old_board_state.txt", "w") as f:
+            for row in self.board_matrix:
+                f.write(" ".join(row) + "\n")
+        with open("new_board_state.txt", "w") as f:
+            for row in new_board_state:
+                f.write(" ".join(row) + "\n")
+        
         
 
         move_uci = self._detect_move(self.board_matrix, new_board_state)
@@ -100,27 +108,28 @@ class ChessBoard:
                 if move in self.chess_board.legal_moves:
                     self.chess_board.push(move)
                     # Update board matrix
-                    if self.chess_board.is_castling(move):
+                    if move_uci in ["e1g1", "e1c1", "e8g8", "e8c8"]:
+                        print(f"Castling detected: {move_uci}")
                         # Handle castling
-                        if move.from_square == chess.E1 and move.to_square == chess.G1:
+                        if move_uci == "e1g1":
                             # White kingside castling
                             self.board_matrix[7][5] = "W_R"
                             self.board_matrix[7][6] = "W_K"
                             self.board_matrix[7][4] = "E"
                             self.board_matrix[7][7] = "E"
-                        elif move.from_square == chess.E1 and move.to_square == chess.C1:
+                        elif move_uci == "e1c1":
                             # White queenside castling
                             self.board_matrix[7][2] = "W_K"
                             self.board_matrix[7][3] = "W_R"
                             self.board_matrix[7][4] = "E"
                             self.board_matrix[7][0] = "E"
-                        elif move.from_square == chess.E8 and move.to_square == chess.G8:
+                        elif move_uci == "e8g8":
                             # Black kingside castling
                             self.board_matrix[0][5] = "B_R"
                             self.board_matrix[0][6] = "B_K"
                             self.board_matrix[0][4] = "E"
                             self.board_matrix[0][7] = "E"
-                        elif move.from_square == chess.E8 and move.to_square == chess.C8:
+                        elif move_uci == "e8c8":
                             # Black queenside castling
                             self.board_matrix[0][2] = "B_K"
                             self.board_matrix[0][3] = "B_R"
@@ -210,10 +219,10 @@ class ChessBoard:
         self.chess_board.push(move)
         
         # Handle castling
-        if self.chess_board.is_castling(move):
+        if uci_move in ["e1g1", "e1c1", "e8g8", "e8c8"]:
             print(f"Castling detected: {uci_move}")
             # Exchange the rook and king positions
-            if move.from_square == chess.E1 and move.to_square == chess.G1:
+            if uci_move == "e1g1":
                 # White kingside castling
                 # self.chess_board.set_piece_at(chess.E1, chess.Piece(chess.ROOK, chess.WHITE))
                 # self.chess_board.set_piece_at(chess.G1, chess.Piece(chess.KING, chess.WHITE))
@@ -222,7 +231,7 @@ class ChessBoard:
                 self.board_matrix[7][6] = "W_K"  # G1
                 self.board_matrix[7][4] = "E"
                 self.board_matrix[7][7] = "E"
-            elif move.from_square == chess.E1 and move.to_square == chess.C1:
+            elif uci_move == "e1c1":
                 # White queenside castling
                 # self.chess_board.set_piece_at(chess.D1, chess.Piece(chess.ROOK, chess.WHITE))
                 # self.chess_board.set_piece_at(chess.A1, chess.Piece(chess.KING, chess.WHITE))
@@ -231,7 +240,7 @@ class ChessBoard:
                 self.board_matrix[7][3] = "W_R"
                 self.board_matrix[7][4] = "E"
                 self.board_matrix[7][0] = "E"
-            elif move.from_square == chess.E8 and move.to_square == chess.G8:
+            elif uci_move == "e8g8":
                 # Black kingside castling
                 # self.chess_board.set_piece_at(chess.F8, chess.Piece(chess.ROOK, chess.BLACK))
                 # self.chess_board.set_piece_at(chess.H8, chess.Piece(chess.KING, chess.BLACK))
@@ -240,7 +249,7 @@ class ChessBoard:
                 self.board_matrix[0][6] = "B_K"
                 self.board_matrix[0][4] = "E"
                 self.board_matrix[0][7] = "E"
-            elif move.from_square == chess.E8 and move.to_square == chess.C8:
+            elif uci_move == "e8c8":
                 # Black queenside castling
                 # self.chess_board.set_piece_at(chess.D8, chess.Piece(chess.ROOK, chess.BLACK))
                 # self.chess_board.set_piece_at(chess.A8, chess.Piece(chess.KING, chess.BLACK))
@@ -249,27 +258,31 @@ class ChessBoard:
                 self.board_matrix[0][3] = "B_R"
                 self.board_matrix[0][4] = "E"
                 self.board_matrix[0][0] = "E"
-
+        else:
         # Update our matrix
-        from_sq = move.from_square
-        to_sq = move.to_square
-        from_row = 7 - chess.square_rank(from_sq)
-        from_col = chess.square_file(from_sq)
-        to_row = 7 - chess.square_rank(to_sq)
-        to_col = chess.square_file(to_sq)
+            from_sq = move.from_square
+            to_sq = move.to_square
+            from_row = 7 - chess.square_rank(from_sq)
+            from_col = chess.square_file(from_sq)
+            to_row = 7 - chess.square_rank(to_sq)
+            to_col = chess.square_file(to_sq)
 
-        piece = self.board_matrix[from_row][from_col]
+            piece = self.board_matrix[from_row][from_col]
 
-        # Check that the right color is moving
-        if color == "W" and not piece.startswith("W_"):
-            raise ValueError(f"No white piece at {uci_move[:2]}")
-        if color == "B" and not piece.startswith("B_"):
-            raise ValueError(f"No black piece at {uci_move[:2]}")
+            # Check that the right color is moving
+            if color == "W" and not piece.startswith("W_"):
+                raise ValueError(f"No white piece at {uci_move[:2]}")
+            if color == "B" and not piece.startswith("B_"):
+                raise ValueError(f"No black piece at {uci_move[:2]}")
 
-        self.board_matrix[to_row][to_col] = piece
-        self.board_matrix[from_row][from_col] = "E"
+            self.board_matrix[to_row][to_col] = piece
+            self.board_matrix[from_row][from_col] = "E"
 
         print(f"Move applied: {piece} {uci_move[:2]} -> {uci_move[2:]}")
+        # write the board to a .txt file
+        with open("chess_board.txt", "w") as f:
+            for row in self.board_matrix:
+                f.write(" ".join(row) + "\n")
         print(f"FEN: {self.chess_board.fen()}")
     
     
