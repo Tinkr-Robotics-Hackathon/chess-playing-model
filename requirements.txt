@@ -5,7 +5,7 @@ torch
 pillow
 torchvision
 ultralytics
-opencv-python
+opencv-python-headless
 numpy 
 matplotlib
 onnxruntime
