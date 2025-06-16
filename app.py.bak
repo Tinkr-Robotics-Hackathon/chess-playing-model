@@ -1,5 +1,4 @@
 import streamlit as st
-from streamlit_modal import Modal
 import chess
 import chess.svg
 from PIL import Image
@@ -7,6 +6,8 @@ import numpy as np
 import os
 import time
 import cv2  # Import OpenCV for camera operations
+
+
 
 # --- Import your actual classes from your project files ---
 # Make sure predictor.py and utils.py are in the same directory as this app.py
@@ -137,7 +138,7 @@ with st.sidebar:
     6.  Repeat!
     """)
 
-# --- Camera Setup Session States ---
+# --- Camera Setup Modal (Main Area) ---
 if 'camera_source' not in st.session_state:
     st.session_state.camera_source = 'usb'
 if 'camera_index' not in st.session_state:
@@ -146,8 +147,9 @@ if 'camera_url' not in st.session_state:
     st.session_state.camera_url = ''
 if 'preview_active' not in st.session_state:
     st.session_state.preview_active = False
+if 'preview_stop_signal' not in st.session_state:
+    st.session_state.preview_stop_signal = False
 
-# Function to get available cameras
 def get_available_cameras(max_index=3):
     available = []
     for i in range(max_index+1):
@@ -159,24 +161,80 @@ def get_available_cameras(max_index=3):
 
 # Only show camera setup modal if explicitly requested via the New Game button
 if st.session_state.show_camera_modal:
-    # Create the modal
-    modal = Modal(
-        "Camera Setup", 
-        key="camera_setup_modal",
-        padding=20,
-        max_width=800
-    )
-    
-    # Open the modal
-    with modal.container():
-        # Step 1: Select Camera Source
-        st.subheader("Step 1: Select Camera Source")
+    # Create a container for the modal
+    with st.container():
+        # Add modal styling
+        st.markdown("""
+        <style>
+        /* Dark overlay */
+        .fullscreen-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.85);
+            z-index: 999998;
+            backdrop-filter: blur(5px);
+        }
         
+        /* Modal container */
+        .modal-container {
+            background: #222;
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 800px;
+            width: 90%;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 999999;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            color: white;
+        }
+        
+        /* Modal header */
+        .modal-header {
+            color: #4CAF50;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        /* Section headers */
+        .section-header {
+            color: #4CAF50;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        /* Make text visible in dark modal */
+        .modal-container label, .modal-container .stRadio label, 
+        .modal-container .stSelectbox label, .modal-container p {
+            color: white !important;
+        }
+        </style>
+        
+        <!-- Dark overlay -->
+        <div class="fullscreen-overlay"></div>
+        
+        <!-- Modal container -->
+        <div class="modal-container">
+            <!-- Modal header -->
+            <div class="modal-header">Camera Setup</div>
+            
+            <!-- Step 1 header -->
+            <div class="section-header">Step 1: Select Camera Source</div>
+        """, unsafe_allow_html=True)
+        
+        # Camera source selection
         camera_source = st.radio(
             "Choose image source:", 
             ["USB Webcam", "IP Camera URL"],
-            index=0 if st.session_state.camera_source == 'usb' else 1, 
-            key="modal_camera_source_radio"
+            index=0 if st.session_state.camera_source == 'usb' else 1,
+            key="camera_source_radio"
         )
         st.session_state.camera_source = 'usb' if camera_source == "USB Webcam" else 'ip'
         
@@ -186,25 +244,26 @@ if st.session_state.show_camera_modal:
             if available_cams:
                 camera_index = st.selectbox(
                     "Select USB Camera:", 
-                    available_cams, 
-                    index=available_cams.index(st.session_state.get('camera_index', 0)) if st.session_state.get('camera_index', 0) in available_cams else 0, 
-                    key="modal_camera_index_select"
+                    available_cams,
+                    index=available_cams.index(st.session_state.get('camera_index', 0)),
+                    key="camera_index_select"
                 )
                 st.session_state.camera_index = camera_index
             else:
                 st.warning("No USB cameras detected. Please connect a webcam or use an IP camera.")
         else:
             camera_url = st.text_input(
-                "Enter IP Camera Feed URL:", 
-                st.session_state.get('camera_url', ''), 
-                key="modal_camera_url_input",
-                placeholder="rtsp://username:password@ip-address:port/path"
+                "Enter IP Camera Feed URL:",
+                value=st.session_state.get('camera_url', ''),
+                placeholder="rtsp://username:password@ip-address:port/path",
+                key="camera_url_input"
             )
             st.session_state.camera_url = camera_url
         
-        # Step 2: Camera Preview & Setup
-        st.subheader("Step 2: Camera Preview & Setup")
+        # Step 2 header
+        st.markdown('<div class="section-header">Step 2: Camera Preview & Setup</div>', unsafe_allow_html=True)
         
+        # Camera setup instructions
         st.info("""
         Please ensure the chess board is:
         - Completely visible in the camera frame
@@ -212,73 +271,145 @@ if st.session_state.show_camera_modal:
         - Centered and in the middle of the frame
         - Pieces are clearly distinguishable
         """)
-        
-        # Preview placeholder
+            # Preview placeholder for camera feed
         preview_placeholder = st.empty()
         
-        # Control buttons
-        col_preview, col_ok = st.columns(2)
+        # Camera control buttons
+        col1, col2 = st.columns(2)
         
-        with col_preview:
-            if st.button("📷 Take Camera Snapshot", key="modal_preview_start_btn"):
-                st.session_state.preview_active = True
-                st.rerun()
+        with col1:
+            if not st.session_state.preview_active:
+                if st.button("📷 Start Camera Preview", key="preview_start_btn"):
+                    st.session_state.preview_active = True
+                    st.session_state.preview_stop_signal = False
+                    st.rerun()
+            else:
+                if st.button("⏹️ Stop Preview", key="preview_stop_btn"):
+                    st.session_state.preview_stop_signal = True
+                    st.rerun()
         
-        with col_ok:
-            btn_disabled = st.session_state.camera_source == 'ip' and not st.session_state.camera_url
-            if st.button("✅ OK, Camera is Set", key="modal_camera_confirm_btn", disabled=btn_disabled):
+        with col2:
+            # Disable OK button if using IP camera but no URL provided
+            button_disabled = st.session_state.camera_source == 'ip' and not st.session_state.camera_url
+            if st.button("✅ OK, Camera is Set", disabled=button_disabled, key="camera_ok_btn"):
+                st.session_state.preview_stop_signal = True
                 st.session_state.preview_active = False
                 st.session_state.camera_setup_done = True
                 st.session_state.show_camera_modal = False
                 st.session_state.game_started = True
-                
-                # Reset the game
-                st.session_state.board = ChessBoard()
+                st.session_state.board = ChessBoard()  # Reset to new ChessBoard instance
                 st.session_state.fen = st.session_state.board.chess_board.fen()
                 st.session_state.image_captured = False
                 st.session_state.ai_move = None
                 st.session_state.game_over = False
                 st.rerun()
-        
-        # Camera preview logic - Single snapshot instead of video feed
+
+    # Camera preview logic
         if st.session_state.preview_active:
             try:
-                # Show connecting message
-                with st.spinner("Connecting to camera..."):
-                    if st.session_state.camera_source == 'usb':
-                        cap = cv2.VideoCapture(st.session_state.camera_index)
-                    else:
-                        if not st.session_state.camera_url:
-                            preview_placeholder.error("Please enter a camera URL first.")
-                            st.session_state.preview_active = False
-                            st.rerun()
-                        cap = cv2.VideoCapture(st.session_state.camera_url)
-                    
-                    if not cap.isOpened():
-                        preview_placeholder.error("Failed to open camera for preview. Please check your camera connection.")
-                        st.session_state.preview_active = False
-                        st.rerun()
-                    
-                    # Take a single snapshot
-                    ret, frame = cap.read()
-                    cap.release()
-                    
-                    if not ret or frame is None:
-                        preview_placeholder.error("Failed to capture frame. Check camera connection.")
-                    else:
-                        # Display the frame
+                if st.session_state.camera_source == 'usb':
+                    cam_idx = st.session_state.get('camera_index', 0)
+                    cap = cv2.VideoCapture(cam_idx)
+                else:
+                    cam_url = st.session_state.get('camera_url', '')
+                    cap = cv2.VideoCapture(cam_url)
+                
+                if not cap.isOpened():
+                    preview_placeholder.error("Failed to open camera for video preview.")
+                    st.session_state.preview_active = False
+                else:
+                    while not st.session_state.preview_stop_signal:
+                        ret, frame = cap.read()
+                        if not ret or frame is None:
+                            preview_placeholder.error("Failed to capture frame. Check the camera or URL.")
+                            break
                         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                         preview_placeholder.image(
-                            frame_rgb,
-                            caption="Camera Snapshot Preview",
-                            use_container_width=True
+                            frame_rgb, 
+                            caption="Live Camera Preview", 
+                            use_column_width=True
                         )
-            
+                        time.sleep(0.05)  # ~20 FPS
+                
+                cap.release()
+                st.session_state.preview_active = False
+                st.session_state.preview_stop_signal = False
             except Exception as e:
-                preview_placeholder.error(f"Camera error: {str(e)}")
-            
-            # Automatically turn off preview mode after taking the snapshot
+                preview_placeholder.error(f"Camera preview error: {e}")
+                st.session_state.preview_active = False
+
+    # Video preview loop (simulated live preview)
+    import cv2
+    if st.session_state.preview_active:
+        if st.session_state.camera_source == 'usb':
+            cam_idx = st.session_state.get('camera_index', 0)
+            cap = cv2.VideoCapture(cam_idx)
+        else:
+            cam_url = st.session_state.get('camera_url', '')
+            cap = cv2.VideoCapture(cam_url)
+        if not cap.isOpened():
+            preview_placeholder.error("Failed to open camera for video preview.")
             st.session_state.preview_active = False
+        else:
+            while not st.session_state.preview_stop_signal:
+                ret, frame = cap.read()
+                if not ret or frame is None:
+                    preview_placeholder.error("Failed to capture frame from the selected source. Check the camera or URL and try again.")
+                    break
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                preview_placeholder.image(frame_rgb, caption="Camera Live Preview (Press 'Stop Preview' when ready)", use_container_width=True)
+                _time.sleep(0.05)  # ~20 FPS
+            cap.release()
+            st.session_state.preview_active = False
+            st.session_state.preview_stop_signal = False
+        # Close modal HTML
+        st.markdown("""
+          </div>
+        </div>
+        <script>
+        // Execute immediately when loaded
+        (function() {
+            function moveModalToBody() {
+                try {
+                    // Target the top-most document (in case of iframes)
+                    const doc = window.parent.document;
+                    const modal = doc.getElementById('chess-modal-bg');
+                    
+                    // Only move if it exists and isn't already moved
+                    if (modal && modal.parentNode !== doc.body) {
+                        // Remove from current parent
+                        if (modal.parentNode) {
+                            modal.parentNode.removeChild(modal);
+                        }
+                        
+                        // Append to body for true overlay behavior
+                        doc.body.appendChild(modal);
+                        
+                        // Force the modal to be visible and on top
+                        modal.style.display = 'flex';
+                        modal.style.zIndex = '999999';
+                        
+                        // Prevent scrolling while modal is open
+                        doc.body.style.overflow = 'hidden';
+                        
+                        console.log('Chess modal moved to body successfully');
+                    }
+                } catch(e) {
+                    console.error("Error moving modal:", e);
+                }
+            }
+            
+            // Try immediately and with delays to ensure it works
+            moveModalToBody();
+            setTimeout(moveModalToBody, 100);
+            setTimeout(moveModalToBody, 300);
+            setTimeout(moveModalToBody, 600);
+        })();
+        </script>
+        """, unsafe_allow_html=True)
+    
+    # This effectively blocks further page rendering until the modal is closed
+    st.stop()
 
 # --- Main Content ---
 st.title("Man Vs Machine Chess")
@@ -310,7 +441,29 @@ else:
     with col2:
         st.header("Game Controls")
 
-        # Camera selection is now handled in the modal dialog
+        # Camera selection UI
+        import cv2
+        # List available USB cameras (try indices 0-3)
+        def get_available_cameras(max_index=3):
+            available = []
+            for i in range(max_index+1):
+                cap = cv2.VideoCapture(i)
+                if cap is not None and cap.isOpened():
+                    available.append(i)
+                    cap.release()
+            return available
+
+        if 'camera_source' not in st.session_state:
+            st.session_state.camera_source = 'usb'
+        if 'camera_index' not in st.session_state:
+            st.session_state.camera_index = 0
+        if 'camera_url' not in st.session_state:
+            st.session_state.camera_url = ''
+
+
+        # Only show camera selection in sidebar before game starts
+        # After game starts, camera selection is hidden from main UI
+        pass
 
         # Inject JS to trigger a hidden Streamlit button on spacebar press
         st.markdown("""
@@ -349,19 +502,15 @@ else:
                         # Camera capture logic
                         frame = None
                         if st.session_state.camera_source == 'usb':
-                            cam_idx = st.session_state.camera_index
+                            cam_idx = st.session_state.get('camera_index', 0)
                             cap = cv2.VideoCapture(cam_idx)
                             ret, frame = cap.read()
                             cap.release()
                         else:
-                            cam_url = st.session_state.camera_url
-                            if not cam_url:
-                                error_message = "Camera URL is not set. Please set up your camera first."
-                                raise RuntimeError()
+                            cam_url = st.session_state.get('camera_url', '')
                             cap = cv2.VideoCapture(cam_url)
                             ret, frame = cap.read()
                             cap.release()
-                        
                         if frame is None or (not 'ret' in locals() or not ret):
                             error_message = "Failed to capture frame from the selected source. Check the camera or URL and try again."
                             raise RuntimeError()

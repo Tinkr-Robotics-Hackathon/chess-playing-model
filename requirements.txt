@@ -11,5 +11,6 @@ matplotlib
 onnxruntime
 seaborn
 streamlit
+streamlit-modal
 cairosvg
 paho-mqtt
